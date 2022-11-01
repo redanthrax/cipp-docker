@@ -1,0 +1,186 @@
+diff --git a/src/components/header/AppHeaderDropdown.js b/src/components/header/AppHeaderDropdown.js
+index bb0a0246..9a4078bc 100644
+--- a/src/components/header/AppHeaderDropdown.js
++++ b/src/components/header/AppHeaderDropdown.js
+@@ -10,12 +10,18 @@ import {
+ import { faUser, faBook, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
+ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+ import { Link } from 'react-router-dom'
+-import { authApi } from 'src/store/api/auth'
++//import { authApi } from 'src/store/api/auth'
+ import { CippProfile, CippOffcanvas } from 'src/components/utilities'
+ 
+ const AppHeaderDropdown = () => {
+   const [profileVisible, setProfileVisible] = useState(false)
+-  const { data: profile } = authApi.endpoints.loadClientPrincipal.useQueryState()
++  //const { data: profile } = authApi.endpoints.loadClientPrincipal.useQueryState()
++  const profile = {
++    clientPrincipal: {
++      userDetails: ['User'],
++    },
++  }
++  console.log(profile)
+   return (
+     <>
+       <CDropdown variant="nav-item">
+diff --git a/src/components/utilities/CippProfile.js b/src/components/utilities/CippProfile.js
+index 8465125a..29cecf8b 100644
+--- a/src/components/utilities/CippProfile.js
++++ b/src/components/utilities/CippProfile.js
+@@ -9,11 +9,18 @@ import {
+   CListGroupItem,
+   CSpinner,
+ } from '@coreui/react'
+-import { useLoadClientPrincipalQuery } from 'src/store/api/auth'
+ import { ThemeSwitcher, UsageLocation, PageSizeSwitcher } from 'src/components/utilities'
+ 
++const isFetching = false
++const isLoading = false
+ const CippProfile = () => {
+-  const { data: profile, isFetching, isLoading } = useLoadClientPrincipalQuery()
++  const profile = {
++    clientPrincipal: {
++      userDetails: ['User'],
++      userId: '1234',
++      userRoles: [],
++    },
++  }
+ 
+   return (
+     <>
+diff --git a/src/components/utilities/PrivateRoute.js b/src/components/utilities/PrivateRoute.js
+index 98c9b744..6eecf5cd 100644
+--- a/src/components/utilities/PrivateRoute.js
++++ b/src/components/utilities/PrivateRoute.js
+@@ -1,38 +1,26 @@
+ import React from 'react'
+-import { Navigate } from 'react-router-dom'
+-import { useLoadClientPrincipalQuery } from 'src/store/api/auth'
+ import { FullScreenLoading } from 'src/components/utilities'
+ import { useDispatch } from 'react-redux'
+ import { updateAccessToken } from 'src/store/features/auth'
+ import PropTypes from 'prop-types'
+ 
+ export const PrivateRoute = ({ children, routeType }) => {
++  const isFetching = false
+   const dispatch = useDispatch()
+-  const { data: profile, error, isFetching } = useLoadClientPrincipalQuery()
++  const profile = {
++    clientPrincipal: {
++      userDetails: ['User'],
++      userId: '1234',
++      userRoles: [],
++    },
++  }
+   //console.log()
+   if (isFetching) {
+     return <FullScreenLoading />
+   }
+ 
+   dispatch(updateAccessToken(profile))
+-  let roles
+-  if (null !== profile.clientPrincipal) {
+-    roles = profile?.clientPrincipal.userRoles
+-  } else if (null === profile.clientPrincipal) {
+-    return <Navigate to={`/login?redirect_uri=${window.location.href}`} />
+-  }
+-  if (null === roles) {
+-    return <Navigate to={`/login?redirect_uri=${window.location.href}`} />
+-  } else {
+-    const isAuthenticated =
+-      roles.includes('admin') || roles.includes('editor') || (roles.includes('readonly') && !error)
+-    const isAdmin = roles.includes('admin')
+-    if (routeType === 'admin') {
+-      return !isAdmin ? <Navigate to="/403" /> : children
+-    } else {
+-      return !isAuthenticated ? <Navigate to="/403" /> : children
+-    }
+-  }
++  return children
+ }
+ 
+ PrivateRoute.propTypes = {
+diff --git a/src/views/home/Home.js b/src/views/home/Home.js
+index ab551f40..369ec2b1 100644
+--- a/src/views/home/Home.js
++++ b/src/views/home/Home.js
+@@ -10,7 +10,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+ import Skeleton from 'react-loading-skeleton'
+ 
+ const Home = () => {
+-  const { data: versions, isSuccess: isSuccessVersion } = useLoadVersionsQuery()
+   const { data: dashboard, isLoading: isLoadingDash, isSuccess: issuccessDash } = useLoadDashQuery()
+   const tableColumns = [
+     {
+@@ -90,23 +89,6 @@ const Home = () => {
+             </div>
+           </CippContentCard>
+         </CCol>
+-        <CCol className="mb-3" xs={12} lg={2} xl={3}>
+-          <CippContentCard title="Version Frontend" icon={faBook}>
+-            <StatusIcon type="negatedboolean" status={isSuccessVersion && versions.OutOfDateCIPP} />
+-            <div>Latest: {isSuccessVersion ? versions.RemoteCIPPVersion : <Skeleton />}</div>
+-            <div>Current: {isSuccessVersion ? versions.LocalCIPPVersion : <Skeleton />}</div>
+-          </CippContentCard>
+-        </CCol>
+-        <CCol className="mb-3" xs={12} lg={2} xl={3}>
+-          <CippContentCard title="Version Backend" icon={faBook}>
+-            <StatusIcon
+-              type="negatedboolean"
+-              status={isSuccessVersion && versions.OutOfDateCIPPAPI}
+-            />
+-            <div>Latest: {isSuccessVersion ? versions.RemoteCIPPAPIVersion : <Skeleton />}</div>
+-            <div>Current: {isSuccessVersion ? versions.LocalCIPPAPIVersion : <Skeleton />}</div>
+-          </CippContentCard>
+-        </CCol>
+         <CCol>
+           <CippContentCard title="Last logged items" icon={faBook}>
+             {!isLoadingDash && issuccessDash && (
+diff --git a/src/views/pages/login/Login.js b/src/views/pages/login/Login.js
+index 0478b007..de56b236 100644
+--- a/src/views/pages/login/Login.js
++++ b/src/views/pages/login/Login.js
+@@ -1,11 +1,17 @@
+ import React from 'react'
+ import { CSpinner } from '@coreui/react'
+ import { useSearchParams, Navigate } from 'react-router-dom'
+-import { useLoadClientPrincipalQuery } from 'src/store/api/auth'
+ import { FullScreenLoading } from 'src/components/utilities'
+ 
+ const Login = () => {
+-  const { data: profile, isFetching, error } = useLoadClientPrincipalQuery()
++  const isFetching = false
++  const profile = {
++    clientPrincipal: {
++      userDetails: ['User'],
++      userId: '1234',
++      userRoles: [],
++    },
++  }
+ 
+   const [searchParams] = useSearchParams()
+   const isAuthenticated = !!profile?.clientPrincipal || error
+diff --git a/src/views/pages/login/Logout.js b/src/views/pages/login/Logout.js
+index 4c9a6bc7..a57254c3 100644
+--- a/src/views/pages/login/Logout.js
++++ b/src/views/pages/login/Logout.js
+@@ -1,11 +1,17 @@
+ import React from 'react'
+ import { CSpinner } from '@coreui/react'
+ import { Navigate } from 'react-router-dom'
+-import { useLoadClientPrincipalQuery } from 'src/store/api/auth'
+ import { FullScreenLoading } from 'src/components/utilities'
+ 
+ const Logout = () => {
+-  const { data: profile, isFetching, error } = useLoadClientPrincipalQuery()
++  const isFetching = false
++  const profile = {
++    clientPrincipal: {
++      userDetails: ['User'],
++      userId: '1234',
++      userRoles: [],
++    },
++  }
+ 
+   const isAuthenticated = !!profile?.clientPrincipal || error
+ 

@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  azure-storage:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - 10000:10000
+      - 10001:10001
+      - 10002:10002
+  cipp-api:
+    build: ./cipp-api
+    environment:
+      WEBSITE_OWNER_NAME: ${WEBSITE_OWNER_NAME}
+      ApplicationID: ${ApplicationID}
+      ApplicationSecret: ${ApplicationSecret}
+      ExchangeRefreshToken: ${ExchangeRefreshToken}
+      RefreshToken: ${RefreshToken}
+      TenantID: ${TenantID}
+    ports:
+      - 8081:80
+    depends_on:
+      - azure-storage
+  cipp:
+    build: ./cipp
+    ports:
+      - 8080:80
+    depends_on:
+      - cipp-api
